@@ -897,8 +897,8 @@ init_state()
 # ----------------------------
 # UI
 # ----------------------------
-st.set_page_config(page_title="JD→CV Scorer (Form)", layout="wide")
-st.title("JD→CV Scorer — Form UI (No Chat)")
+st.set_page_config(page_title="JD→CV Scorer (v1.4)", layout="wide")
+st.title("JD→CV Scorer (v1.4)")
 
 tab1, tab2 = st.tabs(["1) Generate Rubric", "2) Evaluate CVs"])
 
