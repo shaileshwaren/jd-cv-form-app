@@ -1,4 +1,4 @@
-# version 1.2
+# version 1.1
 
 
 import os
@@ -160,60 +160,64 @@ def build_generate_rubric_prompt(role_applied: str, jd_text: str, rubric_name: s
         """.strip()
 
 
-def build_score_prompt(role_applied: str, jd_text: str, cvs: list[dict], preset_rubric_yaml: str | None) -> str:
+def build_score_prompt(role_applied: str, output_format: str, jd_text: str, cvs: list[dict], preset_rubric_yaml: str | None) -> str:
     preset_block = ""
     if preset_rubric_yaml and preset_rubric_yaml.strip():
         preset_block = f"""
-            PRESET_RUBRIC_YAML (use this and skip JD parsing):
-            {preset_rubric_yaml.strip()}
-            """.strip()
+        PRESET_RUBRIC_YAML (use this and skip JD parsing):
+        {preset_rubric_yaml.strip()}
+        """.strip()
 
     response_contract = """
-        Return a SINGLE JSON object with exactly one top-level key:
+        Return a SINGLE JSON object with these keys:
+        - "markdown_report": string
+        - "json_summary": object|null
+        - If output_format == "JSON": include a structured summary object
+        - Else: set to null
         - "report_data": object
-
-        The report_data MUST follow this schema exactly (no extra keys, no missing keys):
+        This MUST be a structured representation used to generate a formatted PDF.
+        Use this schema exactly:
 
         {
-        "title": "Candidate Scoring Report – <Role>",
-        "candidate_name": "<string>",
-        "role_applied": "<string>",
-        "final_score": "<number as string or number>",
-        "decision": "PASS|FAIL|REVIEW",
-        "compliance": [
+            "title": "Candidate Scoring Report – <Role>",
+            "candidate_name": "<string>",
+            "role_applied": "<string>",
+            "final_score": "<number as string or number>",
+            "decision": "PASS|FAIL|REVIEW",
+            "compliance": [
             {"item":"Education","status":"PASS|FAIL|NOT ASSESSED","details":"<string>"},
             {"item":"Years of Experience","status":"PASS|FAIL|NOT ASSESSED","details":"<string>"},
             {"item":"Work Authorization","status":"PASS|FAIL|NOT ASSESSED","details":"<string>"}
-        ],
-        "must_have": {
+            ],
+            "must_have": {
             "total_weight": 90.0,
             "subtotal_weighted": "<string like '78.47 / 90.00'>",
             "requirements": [
-            {
+                {
                 "idx": 1,
                 "label": "<string>",
                 "weight_pct": <number>,
                 "score_0_5": <integer 0-5>,
                 "weighted_contribution_pct": <number>,
                 "evidence": "<string>"
-            }
+                }
             ]
-        },
-        "nice_to_have": {
+            },
+            "nice_to_have": {
             "total_weight": 10.0,
             "subtotal_weighted": "<string like '10.00 / 10.00'>",
             "requirements": [
-            {
+                {
                 "idx": 1,
                 "label": "<string>",
                 "weight_pct": <number>,
                 "score_0_5": <integer 0-5>,
                 "weighted_contribution_pct": <number>,
                 "evidence": "<string>"
-            }
+                }
             ]
-        },
-        "totals": {
+            },
+            "totals": {
             "weighted_must_have": "<string like '78.47 / 90.00'>",
             "weighted_nice_to_have": "<string like '10.00 / 10.00'>",
             "total_weighted": "<string like '88.47 / 100.00'>",
@@ -221,12 +225,12 @@ def build_score_prompt(role_applied: str, jd_text: str, cvs: list[dict], preset_
             "compliance_summary": "<string>",
             "final_decision_line": "<string>",
             "rationale": "<string>"
-        },
-        "narrative": {
+            },
+            "narrative": {
             "strengths": ["<string>", "<string>"],
             "gaps": ["<string>", "<string>"],
             "recommendation": "<string>"
-        }
+            }
         }
 
         Do not wrap in triple backticks. Return valid JSON only.
@@ -257,6 +261,8 @@ def build_score_prompt(role_applied: str, jd_text: str, cvs: list[dict], preset_
 
         CVS:
         {cv_blob}
+
+        OUTPUT_FORMAT_FOR_UI_DISPLAY: {output_format}
 
         {response_contract}
         """.strip()
@@ -583,253 +589,6 @@ def pdf_bytes_from_report_data(report_data: dict, markdown_fallback: str = "") -
     return buffer.getvalue()
 
 
-def report_data_to_html(report_data: dict) -> str:
-    # Create a self-contained, styled HTML report from report_data (safe-escapes dynamic text).
-    import html as _html
-
-    if not isinstance(report_data, dict) or not report_data:
-        return "<html><body><p>No report_data available.</p></body></html>"
-
-    def esc(x):
-        return _html.escape("" if x is None else str(x))
-
-    def badge(text, cls):
-        return f'<span class="badge {cls}">{esc(text)}</span>'
-
-    def status_badge(status):
-        s = (status or "").upper()
-        cls = "neutral"
-        if s == "PASS":
-            cls = "pass"
-        elif s == "FAIL":
-            cls = "fail"
-        elif s == "REVIEW":
-            cls = "review"
-        return badge(s, cls)
-
-    decision = (report_data.get("decision") or "REVIEW").upper()
-    decision_cls = {"PASS": "pass", "FAIL": "fail", "REVIEW": "review"}.get(decision, "neutral")
-
-    title = report_data.get("title") or f"Candidate Scoring Report – {esc(report_data.get('role_applied',''))}"
-    candidate_name = report_data.get("candidate_name", "")
-    role_applied = report_data.get("role_applied", "")
-    final_score = report_data.get("final_score", "")
-    totals = report_data.get("totals", {}) or {}
-    narrative = report_data.get("narrative", {}) or {}
-
-    compliance = report_data.get("compliance", []) or []
-    must = report_data.get("must_have", {}) or {}
-    nice = report_data.get("nice_to_have", {}) or {}
-
-    comp_rows = "\n".join(
-        f"<tr><td>{esc(r.get('item',''))}</td><td>{status_badge(r.get('status',''))}</td><td>{esc(r.get('details',''))}</td></tr>"
-        for r in compliance
-    )
-
-    def req_rows(reqs):
-        out = []
-        for r in (reqs or []):
-            weight = float(r.get("weight_pct", 0) or 0)
-            contrib = float(r.get("weighted_contribution_pct", 0) or 0)
-            score = int(r.get("score_0_5", 0) or 0)
-            out.append(
-                "<tr>"
-                f"<td class='mono'>{esc(r.get('idx',''))}</td>"
-                f"<td>{esc(r.get('label',''))}</td>"
-                f"<td class='center'>{esc(f'{weight:.2f}%')}</td>"
-                f"<td class='center'>{esc(score)}</td>"
-                f"<td class='center'>{esc(f'{contrib:.2f}%')}</td>"
-                f"<td class='evidence'>{esc(r.get('evidence',''))}</td>"
-                "</tr>"
-            )
-        return "\n".join(out)
-
-    must_rows = req_rows(must.get("requirements", []))
-    nice_rows = req_rows(nice.get("requirements", []))
-
-    strengths = "\n".join(f"<li>{esc(x)}</li>" for x in (narrative.get("strengths", []) or []))
-    gaps = "\n".join(f"<li>{esc(x)}</li>" for x in (narrative.get("gaps", []) or []))
-
-    html_doc = f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>{esc(title)}</title>
-  <style>
-    :root {{
-      --bg: #0b1020;
-      --muted: #aab4d4;
-      --text: #e9ecff;
-      --line: rgba(255,255,255,.10);
-      --shadow: 0 12px 30px rgba(0,0,0,.35);
-      --radius: 16px;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{
-      margin: 0;
-      padding: 18px;
-      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: radial-gradient(1000px 600px at 20% 0%, #1a275f 0%, rgba(26,39,95,0) 60%),
-                  radial-gradient(1000px 600px at 80% 0%, #2a1658 0%, rgba(42,22,88,0) 60%),
-                  var(--bg);
-      color: var(--text);
-    }}
-    .wrap {{ max-width: 1100px; margin: 0 auto; }}
-    .header {{
-      display: flex; gap: 18px; align-items: flex-start; justify-content: space-between;
-      padding: 18px 20px;
-      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
-      border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
-    }}
-    h1 {{ margin: 0; font-size: 20px; letter-spacing: .2px; }}
-    .sub {{ margin-top: 6px; color: var(--muted); font-size: 13px; }}
-    .pillrow {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }}
-    .pill {{
-      border: 1px solid var(--line);
-      background: rgba(255,255,255,.04);
-      border-radius: 999px;
-      padding: 8px 12px;
-      font-size: 13px;
-      display: flex; align-items: center; gap: 8px;
-    }}
-    .badge {{
-      display: inline-flex; align-items: center; justify-content: center;
-      font-weight: 700; font-size: 12px;
-      padding: 4px 10px; border-radius: 999px;
-      border: 1px solid rgba(255,255,255,.18);
-    }}
-    .badge.pass {{ background: rgba(34,197,94,.14); color: #b8ffd0; border-color: rgba(34,197,94,.35); }}
-    .badge.fail {{ background: rgba(239,68,68,.14); color: #ffd0d0; border-color: rgba(239,68,68,.35); }}
-    .badge.review {{ background: rgba(245,158,11,.16); color: #ffe7b5; border-color: rgba(245,158,11,.40); }}
-    .badge.neutral {{ background: rgba(100,116,139,.16); color: #d7deea; border-color: rgba(100,116,139,.40); }}
-
-    .grid {{ display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }}
-    .card {{
-      padding: 16px 16px; background: rgba(255,255,255,.04);
-      border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
-      overflow: hidden;
-    }}
-    .card h2 {{ margin: 0 0 10px 0; font-size: 15px; }}
-    .muted {{ color: var(--muted); font-size: 13px; line-height: 1.4; }}
-    table {{
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 10px;
-      font-size: 13px;
-      overflow: hidden;
-      border-radius: 12px;
-    }}
-    th, td {{ padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }}
-    th {{
-      text-align: left;
-      color: #cfd7ff;
-      background: rgba(255,255,255,.05);
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: .6px;
-    }}
-    tr:hover td {{ background: rgba(255,255,255,.03); }}
-    .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }}
-    .center {{ text-align: center; white-space: nowrap; }}
-    .evidence {{ color: #dbe2ff; max-width: 520px; }}
-    .split {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
-    @media (max-width: 900px) {{ .split {{ grid-template-columns: 1fr; }} }}
-    .callout {{
-      padding: 12px 14px; border-radius: 12px;
-      background: rgba(255,255,255,.04); border: 1px solid var(--line);
-      color: var(--muted);
-    }}
-    ul {{ margin: 8px 0 0 18px; padding: 0; }}
-    li {{ margin: 6px 0; color: #dbe2ff; }}
-    footer {{ margin-top: 14px; color: rgba(255,255,255,.45); font-size: 12px; }}
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="header">
-      <div>
-        <h1>{esc(title)}</h1>
-        <div class="sub">Rendered from structured scoring output (report_data).</div>
-        <div class="pillrow">
-          <div class="pill"><span class="muted">Candidate</span> <strong>{esc(candidate_name)}</strong></div>
-          <div class="pill"><span class="muted">Role</span> <strong>{esc(role_applied)}</strong></div>
-          <div class="pill"><span class="muted">Final Score</span> <strong>{esc(final_score)}</strong></div>
-          <div class="pill"><span class="muted">Decision</span> {badge(decision, decision_cls)}</div>
-        </div>
-      </div>
-      <div style="min-width: 260px;">
-        <div class="callout">
-          <div class="muted"><strong>Rationale</strong></div>
-          <div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('rationale',''))}</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid">
-      <div class="card">
-        <h2>Compliance (Gating – Not Scored)</h2>
-        <table>
-          <thead><tr><th>Item</th><th>Status</th><th>Details</th></tr></thead>
-          <tbody>{comp_rows}</tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <h2>Must-have (Total Weight = 90.00%)</h2>
-        <div class="muted">Subtotal: <span class="mono">{esc(must.get('subtotal_weighted',''))}</span></div>
-        <table>
-          <thead>
-            <tr><th>#</th><th>Requirement</th><th class="center">Weight</th><th class="center">Score</th><th class="center">Wt Score</th><th>Evidence</th></tr>
-          </thead>
-          <tbody>{must_rows}</tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <h2>Nice-to-have (Total Weight = 10.00%)</h2>
-        <div class="muted">Subtotal: <span class="mono">{esc(nice.get('subtotal_weighted',''))}</span></div>
-        <table>
-          <thead>
-            <tr><th>#</th><th>Skill</th><th class="center">Weight</th><th class="center">Score</th><th class="center">Wt Score</th><th>Evidence</th></tr>
-          </thead>
-          <tbody>{nice_rows}</tbody>
-        </table>
-      </div>
-
-      <div class="card">
-        <h2>Totals and Final Decision</h2>
-        <div class="split">
-          <div class="callout"><div class="muted">Weighted Must-have</div><div class="mono" style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('weighted_must_have',''))}</div></div>
-          <div class="callout"><div class="muted">Weighted Nice-to-have</div><div class="mono" style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('weighted_nice_to_have',''))}</div></div>
-          <div class="callout"><div class="muted">Total Weighted</div><div class="mono" style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('total_weighted',''))}</div></div>
-          <div class="callout"><div class="muted">Floor Rule</div><div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('floor_rule',''))}</div></div>
-          <div class="callout"><div class="muted">Compliance</div><div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('compliance_summary',''))}</div></div>
-          <div class="callout"><div class="muted">Final Decision</div><div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('final_decision_line',''))}</div></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Narrative Summary</h2>
-        <div class="split">
-          <div><div class="muted"><strong>Key Strengths</strong></div><ul>{strengths}</ul></div>
-          <div><div class="muted"><strong>Gaps and Risks</strong></div><ul>{gaps}</ul></div>
-        </div>
-        <div class="callout" style="margin-top:12px;">
-          <div class="muted"><strong>Recommendation</strong></div>
-          <div style="margin-top:6px; color:#dbe2ff;">{esc(narrative.get('recommendation',''))}</div>
-        </div>
-      </div>
-    </div>
-
-    <footer>Generated HTML report. You can download this file and open it in any browser.</footer>
-  </div>
-</body>
-</html>
-"""
-    return html_doc
-
-
 def init_state():
     # Rubric tab state
     st.session_state.setdefault("role_rubric", "")
@@ -839,14 +598,15 @@ def init_state():
 
     # Eval tab state
     st.session_state.setdefault("role_eval", "")
+    st.session_state.setdefault("output_format", "Markdown")
     st.session_state.setdefault("jd_eval_paste", "")
     st.session_state.setdefault("preset_rubric_yaml_area", "")
     st.session_state.setdefault("pasted_cvs", "")
 
-    # Results (survive reruns + download clicks)
+    # Result state (important: survives reruns + download clicks)
+    st.session_state.setdefault("last_markdown_report", "")
+    st.session_state.setdefault("last_json_summary", None)
     st.session_state.setdefault("last_report_data", None)
-    st.session_state.setdefault("last_pdf_bytes", b"")
-    st.session_state.setdefault("last_html_report", "")
 
 
 def clear_rubric_form():
@@ -858,16 +618,16 @@ def clear_rubric_form():
 
 def clear_eval_form():
     st.session_state["role_eval"] = ""
+    st.session_state["output_format"] = "Markdown"
     st.session_state["jd_eval_paste"] = ""
     st.session_state["preset_rubric_yaml_area"] = ""
     st.session_state["pasted_cvs"] = ""
+    st.session_state["last_markdown_report"] = ""
+    st.session_state["last_json_summary"] = None
     st.session_state["last_report_data"] = None
-    st.session_state["last_pdf_bytes"] = b""
-    st.session_state["last_html_report"] = ""
 
 
 init_state()
-
 
 # ----------------------------
 # UI
@@ -985,6 +745,12 @@ with tab2:
             key="role_eval",
         )
 
+        st.selectbox(
+            "Output format (for display)",
+            ["Markdown", "JSON"],
+            key="output_format",
+        )
+
         st.markdown("## Job Description")
         jd_file_eval = st.file_uploader(
             "Upload JD (TXT / PDF / DOCX)",
@@ -1015,6 +781,7 @@ with tab2:
 
     if submitted:
         role = st.session_state["role_eval"].strip()
+        output_format = st.session_state["output_format"]
         jd_text = st.session_state["jd_eval_paste"].strip()
 
         if not jd_text and jd_file_eval:
@@ -1052,6 +819,7 @@ with tab2:
                         try:
                             prompt = build_score_prompt(
                                 role_applied=role,
+                                output_format=output_format,
                                 jd_text=jd_text,
                                 cvs=cvs,
                                 preset_rubric_yaml=preset_rubric,
@@ -1072,44 +840,46 @@ with tab2:
                         raw = data.get("result", "")
                         try:
                             model_obj = json.loads(raw)
+                            st.session_state["last_markdown_report"] = model_obj.get("markdown_report", "") or ""
+                            st.session_state["last_json_summary"] = model_obj.get("json_summary", None)
                             st.session_state["last_report_data"] = model_obj.get("report_data", None)
                         except Exception:
                             st.error("Model returned non-JSON output. Showing raw output below.")
                             st.code(raw)
 
-# ----- Render results from session_state (survives reruns/downloads) -----
-report_data = st.session_state.get("last_report_data")
+    # ----- Render results from session_state (survives reruns/downloads) -----
+    markdown_report = st.session_state["last_markdown_report"]
+    json_summary = st.session_state["last_json_summary"]
+    output_format = st.session_state["output_format"]
 
-if report_data:
-    st.markdown("## Results")
+    if markdown_report.strip() or json_summary is not None:
+        st.markdown("## Results")
+        if output_format == "Markdown":
+            st.markdown(markdown_report if markdown_report else "_No markdown_report returned._")
+        else:
+            if json_summary is None:
+                st.warning("json_summary is null. Showing markdown_report instead.")
+                st.markdown(markdown_report if markdown_report else "_No markdown_report returned._")
+            else:
+                st.json(json_summary)
 
-    # Build HTML report (cached in session state)
-    html_report = st.session_state.get("last_html_report") or ""
-    if not html_report:
-        html_report = report_data_to_html(report_data)
-        st.session_state["last_html_report"] = html_report
+        st.markdown("## Downloads (always based on Markdown report)")
+        st.download_button(
+            "Download Markdown report (.md)",
+            data=(markdown_report or "").encode("utf-8"),
+            file_name="evaluation_report.md",
+            mime="text/markdown",
+            disabled=(not markdown_report.strip()),
+        )
 
-    # Show HTML report inside the app window
-    st.components.v1.html(html_report, height=1100, scrolling=True)
-
-    st.markdown("## Downloads")
-
-    st.download_button(
-        "Download Evaluation Report (HTML)",
-        data=html_report.encode("utf-8"),
-        file_name="evaluation_report.html",
-        mime="text/html",
-    )
-
-    # Optional: keep PDF download
-    pdf_bytes = st.session_state.get("last_pdf_bytes") or b""
-    if not pdf_bytes:
-        pdf_bytes = pdf_bytes_from_report_data(report_data, markdown_fallback="")
-        st.session_state["last_pdf_bytes"] = pdf_bytes
-
-    st.download_button(
-        "Download Evaluation Report (PDF)",
-        data=pdf_bytes,
-        file_name="evaluation_report.pdf",
-        mime="application/pdf",
-    )
+        pdf_bytes = pdf_bytes_from_report_data(
+            st.session_state["last_report_data"],
+            markdown_fallback=st.session_state["last_markdown_report"]
+        )
+        st.download_button(
+            "Download PDF (Formatted Evaluation Report)",
+            data=pdf_bytes,
+            file_name="evaluation_report.pdf",
+            mime="application/pdf",
+            disabled=(not st.session_state["last_markdown_report"].strip() and not st.session_state["last_report_data"]),
+        )
