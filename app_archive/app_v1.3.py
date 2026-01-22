@@ -1,3 +1,6 @@
+# version 1.3
+
+
 import os
 import json
 from pathlib import Path
@@ -624,10 +627,10 @@ def report_data_to_html(report_data: dict) -> str:
     )
 
     def dot_for_score(score: int) -> str:
-        # Traffic light mapping: green 3–5, yellow 2, red 0–1
-        if score >= 3:
+        # Traffic light mapping: green 4–5, yellow 2-3, red 0–1
+        if score >= 4:
             cls = "green"
-        elif score == 2:
+        elif score >= 2:
             cls = "yellow"
         else:
             cls = "red"
@@ -667,11 +670,11 @@ def report_data_to_html(report_data: dict) -> str:
   <title>{esc(title)}</title>
   <style>
     :root {{
-      --bg: #edeef1;
-      --muted: #5b5c5c;
-      --text: #1d1d1d;
-      --line: rgba(29,29,29,.12);
-      --shadow: 0 12px 30px rgba(0,0,0,.10);
+      --bg: #0b1020;
+      --muted: #aab4d4;
+      --text: #e9ecff;
+      --line: rgba(255,255,255,.10);
+      --shadow: 0 12px 30px rgba(0,0,0,.35);
       --radius: 16px;
     }}
     * {{ box-sizing: border-box; }}
@@ -679,14 +682,16 @@ def report_data_to_html(report_data: dict) -> str:
       margin: 0;
       padding: 18px;
       font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
-      background: var(--bg);
+      background: radial-gradient(1000px 600px at 20% 0%, #1a275f 0%, rgba(26,39,95,0) 60%),
+                  radial-gradient(1000px 600px at 80% 0%, #2a1658 0%, rgba(42,22,88,0) 60%),
+                  var(--bg);
       color: var(--text);
     }}
     .wrap {{ max-width: 1100px; margin: 0 auto; }}
     .header {{
       display: flex; gap: 18px; align-items: flex-start; justify-content: space-between;
       padding: 18px 20px;
-      background: #ffffff;
+      background: linear-gradient(180deg, rgba(255,255,255,.06), rgba(255,255,255,.03));
       border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
     }}
     h1 {{ margin: 0; font-size: 20px; letter-spacing: .2px; }}
@@ -694,7 +699,7 @@ def report_data_to_html(report_data: dict) -> str:
     .pillrow {{ display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }}
     .pill {{
       border: 1px solid var(--line);
-      background: #e6e7eb;
+      background: rgba(255,255,255,.04);
       border-radius: 999px;
       padding: 8px 12px;
       font-size: 13px;
@@ -706,10 +711,10 @@ def report_data_to_html(report_data: dict) -> str:
       padding: 4px 10px; border-radius: 999px;
       border: 1px solid rgba(255,255,255,.18);
     }}
-    .badge.pass {{ background: rgba(34,197,94,.16); color: #14532d; border-color: rgba(34,197,94,.35); }}
-    .badge.fail {{ background: rgba(239,68,68,.16); color: #7f1d1d; border-color: rgba(239,68,68,.35); }}
-    .badge.review {{ background: rgba(245,158,11,.18); color: #7c2d12; border-color: rgba(245,158,11,.40); }}
-    .badge.neutral {{ background: rgba(100,116,139,.14); color: #334155; border-color: rgba(100,116,139,.35); }}
+    .badge.pass {{ background: rgba(34,197,94,.14); color: #b8ffd0; border-color: rgba(34,197,94,.35); }}
+    .badge.fail {{ background: rgba(239,68,68,.14); color: #ffd0d0; border-color: rgba(239,68,68,.35); }}
+    .badge.review {{ background: rgba(245,158,11,.16); color: #ffe7b5; border-color: rgba(245,158,11,.40); }}
+    .badge.neutral {{ background: rgba(100,116,139,.16); color: #d7deea; border-color: rgba(100,116,139,.40); }}
 
     /* Traffic-light score dots */
     .dot {{
@@ -719,8 +724,8 @@ def report_data_to_html(report_data: dict) -> str:
       border-radius: 999px;
       margin-right: 8px;
       vertical-align: -1px;
-      border: 1px solid rgba(29,29,29,.18);
-      box-shadow: 0 0 0 3px rgba(29,29,29,.04) inset;
+      border: 1px solid rgba(255,255,255,.22);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.04) inset;
     }}
     .dot.green  {{ background: rgba(34,197,94,.90); }}
     .dot.yellow {{ background: rgba(245,158,11,.95); }}
@@ -728,7 +733,7 @@ def report_data_to_html(report_data: dict) -> str:
 
     .grid {{ display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }}
     .card {{
-      padding: 16px 16px; background: #ffffff;
+      padding: 16px 16px; background: rgba(255,255,255,.04);
       border: 1px solid var(--line); border-radius: var(--radius); box-shadow: var(--shadow);
       overflow: hidden;
     }}
@@ -745,25 +750,25 @@ def report_data_to_html(report_data: dict) -> str:
     th, td {{ padding: 10px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }}
     th {{
       text-align: left;
-      color: var(--text);
-      background: #e6e7eb;
+      color: #cfd7ff;
+      background: rgba(255,255,255,.05);
       font-size: 12px;
       text-transform: uppercase;
       letter-spacing: .6px;
     }}
-    tr:hover td {{ background: #f3f4f6; }}
+    tr:hover td {{ background: rgba(255,255,255,.03); }}
     .mono {{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }}
     .center {{ text-align: center; white-space: nowrap; }}
-    .evidence {{ color: var(--text); max-width: 520px; }}
+    .evidence {{ color: #dbe2ff; max-width: 520px; }}
     .split {{ display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }}
     @media (max-width: 900px) {{ .split {{ grid-template-columns: 1fr; }} }}
     .callout {{
       padding: 12px 14px; border-radius: 12px;
-      background: #ffffff; border: 1px solid var(--line);
+      background: rgba(255,255,255,.04); border: 1px solid var(--line);
       color: var(--muted);
     }}
     ul {{ margin: 8px 0 0 18px; padding: 0; }}
-    li {{ margin: 6px 0; }}
+    li {{ margin: 6px 0; color: #dbe2ff; }}
     footer {{ margin-top: 14px; color: rgba(255,255,255,.45); font-size: 12px; }}
   </style>
 </head>
@@ -783,7 +788,7 @@ def report_data_to_html(report_data: dict) -> str:
       <div style="min-width: 260px;">
         <div class="callout">
           <div class="muted"><strong>Rationale</strong></div>
-          <div style="margin-top:6px;">{esc(totals.get('rationale',''))}</div>
+          <div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('rationale',''))}</div>
         </div>
       </div>
     </div>
@@ -822,12 +827,12 @@ def report_data_to_html(report_data: dict) -> str:
       <div class="card">
         <h2>Totals and Final Decision</h2>
         <div class="split">
-          <div class="callout"><div class="muted">Weighted Must-have</div><div class="mono" style="margin-top:6px;">{esc(totals.get('weighted_must_have',''))}</div></div>
-          <div class="callout"><div class="muted">Weighted Nice-to-have</div><div class="mono" style="margin-top:6px;">{esc(totals.get('weighted_nice_to_have',''))}</div></div>
-          <div class="callout"><div class="muted">Total Weighted</div><div class="mono" style="margin-top:6px;">{esc(totals.get('total_weighted',''))}</div></div>
-          <div class="callout"><div class="muted">Floor Rule</div><div style="margin-top:6px;">{esc(totals.get('floor_rule',''))}</div></div>
-          <div class="callout"><div class="muted">Compliance</div><div style="margin-top:6px;">{esc(totals.get('compliance_summary',''))}</div></div>
-          <div class="callout"><div class="muted">Final Decision</div><div style="margin-top:6px;">{esc(totals.get('final_decision_line',''))}</div></div>
+          <div class="callout"><div class="muted">Weighted Must-have</div><div class="mono" style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('weighted_must_have',''))}</div></div>
+          <div class="callout"><div class="muted">Weighted Nice-to-have</div><div class="mono" style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('weighted_nice_to_have',''))}</div></div>
+          <div class="callout"><div class="muted">Total Weighted</div><div class="mono" style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('total_weighted',''))}</div></div>
+          <div class="callout"><div class="muted">Floor Rule</div><div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('floor_rule',''))}</div></div>
+          <div class="callout"><div class="muted">Compliance</div><div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('compliance_summary',''))}</div></div>
+          <div class="callout"><div class="muted">Final Decision</div><div style="margin-top:6px; color:#dbe2ff;">{esc(totals.get('final_decision_line',''))}</div></div>
         </div>
       </div>
 
@@ -839,7 +844,7 @@ def report_data_to_html(report_data: dict) -> str:
         </div>
         <div class="callout" style="margin-top:12px;">
           <div class="muted"><strong>Recommendation</strong></div>
-          <div style="margin-top:6px;">{esc(narrative.get('recommendation',''))}</div>
+          <div style="margin-top:6px; color:#dbe2ff;">{esc(narrative.get('recommendation',''))}</div>
         </div>
       </div>
     </div>
@@ -894,8 +899,8 @@ init_state()
 # ----------------------------
 # UI
 # ----------------------------
-st.set_page_config(page_title="JD→CV Scorer (Form)", layout="wide")
-st.title("JD→CV Scorer — Form UI (No Chat)")
+st.set_page_config(page_title="JD→CV Scorer", layout="wide")
+st.title("JD→CV Scorer (v1.3)")
 
 tab1, tab2 = st.tabs(["1) Generate Rubric", "2) Evaluate CVs"])
 
@@ -1123,23 +1128,15 @@ if report_data:
         mime="text/html",
     )
 
-    # Optional: PDF download (generated on demand for speed)
-    st.markdown("### Optional: PDF download")
-    col_pdf1, col_pdf2 = st.columns([1, 2])
+    # Optional: keep PDF download
+    pdf_bytes = st.session_state.get("last_pdf_bytes") or b""
+    if not pdf_bytes:
+        pdf_bytes = pdf_bytes_from_report_data(report_data, markdown_fallback="")
+        st.session_state["last_pdf_bytes"] = pdf_bytes
 
-    with col_pdf1:
-        if st.button("Generate PDF"):
-            pdf_bytes = pdf_bytes_from_report_data(report_data, markdown_fallback="")
-            st.session_state["last_pdf_bytes"] = pdf_bytes
-
-    with col_pdf2:
-        pdf_bytes = st.session_state.get("last_pdf_bytes") or b""
-        if pdf_bytes:
-            st.download_button(
-                "Download Evaluation Report (PDF)",
-                data=pdf_bytes,
-                file_name="evaluation_report.pdf",
-                mime="application/pdf",
-            )
-        else:
-            st.caption("Click “Generate PDF” to enable PDF download.")
+    st.download_button(
+        "Download Evaluation Report (PDF)",
+        data=pdf_bytes,
+        file_name="evaluation_report.pdf",
+        mime="application/pdf",
+    )
