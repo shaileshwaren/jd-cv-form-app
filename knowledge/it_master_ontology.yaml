@@ -1,0 +1,585 @@
+version: 0.9
+name: it_master_ontology
+updated: 2025-09-15
+maintainer: TalentOps
+locale_defaults: ["en", "en-MY", "en-SG", "en-ID", "en-PH", "en-TH", "en-IN", "en-JP"]
+
+description: |
+  Unified ontology for **roles + skills** used in JD→CV evaluation. Includes:
+  - Canonical roles with aliases (title normalization, regional variants, recruiter tags)
+  - Canonical skills with aliases, regex guards, and semantic clustering hints
+  - Role↔skill crosswalk (typical core skills per role family)
+  - Normalization rules (strip suffixes like (R), numbering, location tags, level tags)
+  - Seniority levels and function families
+  - Matching priorities: aliases → regex → embeddings (semantic)
+
+matching:
+  order: [aliases, regex, embeddings]
+  min_similarity: 0.82
+  case_insensitive: true
+  strip_punctuation: true
+  normalize_whitespace: true
+  token_filters:
+    - drop_tokens: ["(r)", "-r", "(my)", "(sg)", "(id)", "(ph)", "(th)", "(jp)", "malaysia", "singapore", "indonesia", "philippines", "thailand", "japan"]
+    - drop_patterns: ["\\b\d{1,3}(-\d+)?\\b", "\\b(v\d+|ver\.?\d+)\\b"]
+  seniority_markers:
+    intern: ["intern", "trainee", "apprentice"]
+    junior: ["junior", "assoc", "entry", "l1"]
+    mid: ["mid", "engineer", "consultant"]
+    senior: ["senior", "sr", "lead", "principal", "staff", "l2", "l3"]
+    manager: ["manager", "mgr", "head", "director", "vp", "chief", "cto", "ciso"]
+
+families:
+  - key: engineering
+    labels: ["Engineering", "Software Engineering", "Development"]
+  - key: data
+    labels: ["Data", "Analytics", "AI/ML"]
+  - key: infra
+    labels: ["Infrastructure", "Cloud", "DevOps", "SRE", "IT Ops"]
+  - key: security
+    labels: ["Cybersecurity", "GRC", "SecOps"]
+  - key: product
+    labels: ["Product", "Program", "Project"]
+  - key: business
+    labels: ["Sales", "BD", "Marketing", "CS"]
+  - key: consulting
+    labels: ["Consulting", "Advisory", "BA"]
+  - key: enterprise_apps
+    labels: ["ERP", "CRM", "HCM", "SCM"]
+  - key: qa
+    labels: ["QA", "Test", "QE"]
+  - key: admin_finance_hr
+    labels: ["HR", "Admin", "Finance"]
+
+# ---------------------------
+# Roles (canonical)
+# ---------------------------
+roles:
+  # ===== Engineering (Java/.NET/JS/Mobile) =====
+  - key: java_developer
+    label: Java Developer
+    family: engineering
+    aliases: ["java backend developer", "java api developer", "java spring boot developer", "java front end developer", "it programmer/analyst – java developer", "java developer (my)", "java developer "]
+    regex: ["(?<!script)\\bjava\\b"]
+  - key: senior_backend_java
+    label: Senior Backend Java Developer
+    family: engineering
+    aliases: ["acra_senior backend java developer", "senior java developer", "java backend engineer"]
+  - key: fullstack_java
+    label: Full Stack Java Developer
+    family: engineering
+    aliases: ["lead / senior full stack developer", "full stack engineer (java)"]
+  - key: dotnet_developer
+    label: .NET Developer
+    family: engineering
+    aliases: [".net programmer", "sr. .net developer", "junior vb.net developer", ".net database administrator", "full stack developer-dotnet", "senior .net developer", "dot net developer (mid-level)", ".net developer", "sr. .net developer (5-7 yr)-5-r", "dba- dot net"]
+  - key: microsoft_dynamics_developer
+    label: Microsoft Dynamics Developer
+    family: enterprise_apps
+    aliases: ["dynamics 365 developer", "dynamics 365 junior developer", "dynamics 365 senior developer", "microsoft dynamics developer"]
+  - key: react_js_developer
+    label: React JS Developer
+    family: engineering
+    aliases: ["reactjs developer", "react.js developer", "react js developer"]
+  - key: node_js_developer
+    label: Node.js Developer
+    family: engineering
+    aliases: ["node js developer (2-6)", "node js developer 1", "node js developer"]
+  - key: flutter_developer
+    label: Flutter Developer
+    family: engineering
+    aliases: ["flutter developer(1)"]
+  - key: ios_developer
+    label: iOS Developer
+    family: engineering
+    aliases: ["swift developer", "objective-c developer"]
+  - key: android_developer
+    label: Android Developer
+    family: engineering
+    aliases: ["kotlin developer", "android engineer"]
+
+  # ===== Data & Analytics =====
+  - key: data_engineer
+    label: Data Engineer
+    family: data
+    aliases: ["data engineer - snowflake", "data engineer - databricks"]
+  - key: data_scientist
+    label: Data Scientist
+    family: data
+    aliases: ["(senior) data scientist", "senior data scientist", "ml scientist", "ai scientist"]
+  - key: data_lead
+    label: Data Science & Engineering Team Lead
+    family: data
+    aliases: ["data science lead", "head of data engineering", "data lead"]
+  - key: database_admin
+    label: Database Administrator
+    family: infra
+    aliases: ["mysql dba", "my sql database admin", "senior dba", "dba (kl/johor)", ".net database administrator", "mysql dba (r)"]
+
+  # ===== Cloud / DevOps / SRE =====
+  - key: devops_engineer
+    label: DevOps Engineer
+    family: infra
+    aliases: ["as400 devops engineer", "sap ehs devops", "devops integration specialist", "cloud devops engineer"]
+  - key: cloud_infra_engineer
+    label: Cloud Infrastructure Engineer
+    family: infra
+    aliases: ["alibaba cloud infra support engineer", "azure resident engineer", "l2 resident engineer", "cloud engineer"]
+  - key: sre_engineer
+    label: Site Reliability Engineer (SRE)
+    family: infra
+    aliases: ["reliability engineer", "production engineer", "l3 production support engineer"]
+  - key: wintel_engineer
+    label: Wintel Engineer
+    family: infra
+    aliases: ["senior wintel engineer", "senior wintel engineer (r)", "senior wintel engineer -1", "senior wintel engineer -2"]
+  - key: linux_admin
+    label: Linux Administrator
+    family: infra
+    aliases: ["linux engineer (r)", "linux admin"]
+  - key: storage_backup_engineer
+    label: Storage & Backup Engineer
+    family: infra
+    aliases: ["storage / back-up resource & infra", "backup & storage engineer", "storage engineer"]
+  - key: network_specialist
+    label: IT Network Specialist
+    family: infra
+    aliases: ["network engineer", "it network specialist"]
+
+  # ===== Security =====
+  - key: soc_manager
+    label: SOC Manager
+    family: security
+    aliases: ["security operations center manager"]
+  - key: security_analyst
+    label: Security Analyst
+    family: security
+    aliases: ["l1 security engineer", "l1 security engineer (aus)", "security operations", "blue team analyst"]
+  - key: information_security_engineer
+    label: Information Security Engineer
+    family: security
+    aliases: ["senior information security engineer (ise)", "senior information security consultant", "ot security", "azure resident engineer for cyber security threat defence (ctsd)"]
+  - key: grc_consultant
+    label: GRC / Security Consultant
+    family: security
+    aliases: ["senior information security consultant", "security compliance consultant"]
+
+  # ===== QA / Testing =====
+  - key: qa_engineer
+    label: QA / Test Engineer
+    family: qa
+    aliases: ["test engineer -1", "qc/qa engineer", "quality engineer"]
+
+  # ===== Product / Project / Program =====
+  - key: product_manager
+    label: Product Manager
+    family: product
+    aliases: ["managed services operations coordinator", "product owner"]
+  - key: project_manager
+    label: Project Manager
+    family: product
+    aliases: ["it project manager", "ph - project manager", "technical project manager", "ph - program coordinator", "project coordinator", "project manager hcm", "project manager hcm (2)"]
+  - key: program_manager
+    label: Program Manager
+    family: product
+    aliases: ["delivery manager", "engagement manager"]
+
+  # ===== Consulting / Analysis =====
+  - key: business_analyst
+    label: Business Analyst
+    family: consulting
+    aliases: ["ph - business analyst", "junior business analyst", "senior business analyst", "senior business analyst - lead", "crm business analyst"]
+  - key: it_consultant_vdi
+    label: IT Consultant - Virtual Desktop Infrastructure
+    family: consulting
+    aliases: ["it consultant - virtual desktop infrastructure", "vdi consultant"]
+  - key: technical_lead
+    label: Technical Lead
+    family: engineering
+    aliases: ["technical lead - pdm", "solution architect", "sr software developer-backend", "system architect", "system architect 2", "solution architect "]
+
+  # ===== Enterprise Apps (SAP / Oracle / CRM) =====
+  - key: sap_abap_developer
+    label: SAP ABAP Developer
+    family: enterprise_apps
+    aliases: ["sap abap programmer", "senior sap abap developer"]
+  - key: sap_fiori_consultant
+    label: SAP FIORI Consultant
+    family: enterprise_apps
+    aliases: ["sap fiori dev", "sap fiori developer"]
+  - key: sap_ehs_devops
+    label: SAP EHS DevOps
+    family: enterprise_apps
+    aliases: ["sap ehs engineer", "sap ehs developer"]
+  - key: sap_mm_consultant
+    label: SAP MM Consultant
+    family: enterprise_apps
+    aliases: ["sap mm", "sap mm functional"]
+  - key: sap_fico_consultant
+    label: SAP FICO Consultant
+    family: enterprise_apps
+    aliases: ["sap fico (coe)", "sap fico analyst"]
+  - key: sap_co_consultant
+    label: SAP CO Consultant
+    family: enterprise_apps
+    aliases: ["sap co", "sap controlling"]
+  - key: oracle_fusion_techno_func
+    label: Oracle Fusion Techno-functional Consultant
+    family: enterprise_apps
+    aliases: ["oracle fusion consultant", "oracle techno functional"]
+  - key: dynamics_crm_dev_ba
+    label: Dynamics CRM Dev/BA
+    family: enterprise_apps
+    aliases: ["crm developer", "crm developer [my5- itc3]", "tsdr crm developer", "dynamics technical ba", "senior business analyst dynamics crm (replacement of zatul)"]
+
+  # ===== Support / Service =====
+  - key: l1_support_engineer
+    label: L1 Support Engineer
+    family: infra
+    aliases: ["its solutions engineer jr", "its solutions engineer", "interface engineer", "l1 support engineer"]
+  - key: customer_service_rep
+    label: Customer Service Representative
+    family: admin_finance_hr
+    aliases: ["customer service representative (oku card holders)"]
+
+  # ===== Sales / BD / Marketing =====
+  - key: business_development_manager
+    label: Business Development Manager
+    family: business
+    aliases: ["senior bdm (enterprise sales)", "th - bdm (business development manager)", "business development executive", "sg - bde", "ph - bde"]
+  - key: sales_manager
+    label: Sales Manager
+    family: business
+    aliases: ["sales manager - indonesia", "technical sales consultant", "senior bdm", "senior bdm (enterprise sales)"]
+  - key: sales_director
+    label: Sales Director
+    family: business
+    aliases: ["director of sales"]
+  - key: product_marketing_manager
+    label: Product Marketing Manager
+    family: business
+    aliases: ["marketing manager", "solutions marketing"]
+
+  # ===== Finance / HR / Admin =====
+  - key: finance_manager
+    label: Finance Manager
+    family: admin_finance_hr
+    aliases: ["senior manager - financial reporting", "head of finance", "finance manager (replacement)"]
+  - key: hr_admin
+    label: HR & Admin
+    family: admin_finance_hr
+    aliases: ["recruitment coordinator", "hr administrator", "office admin"]
+
+# ---------------------------
+# Skills (canonical)
+# ---------------------------
+skills:
+  # --- Languages & Frameworks ---
+  - key: java
+    label: Java
+    type: language
+    aliases: ["java se", "java ee", "jakarta ee", "j2ee"]
+    regex: ["(?<!script)\\bjava\\b"]
+    related: ["spring", "hibernate", "maven", "gradle", "microservices"]
+    children:
+      - key: spring
+        label: Spring
+        aliases: ["spring framework", "spring core"]
+        related: ["java", "spring boot", "di", "ioc"]
+      - key: spring_boot
+        label: Spring Boot
+        aliases: ["springboot", "spring-boot"]
+        related: ["java", "spring", "microservices", "actuator"]
+      - key: hibernate
+        label: Hibernate (JPA)
+        aliases: ["jpa", "hibernate orm"]
+        related: ["java", "spring data", "rdbms"]
+      - key: rest_api
+        label: REST APIs
+        aliases: ["rest", "restful", "http api", "json api"]
+        related: ["swagger", "openapi", "postman", "microservices"]
+      - key: microservices
+        label: Microservices
+        aliases: ["micro-service", "micro services"]
+        related: ["spring boot", "docker", "kubernetes", "service mesh"]
+
+  - key: dotnet
+    label: .NET
+    type: platform
+    aliases: [".net core", ".net framework", "c#", "vb.net"]
+    children:
+      - key: csharp
+        label: C#
+        aliases: ["c sharp"]
+      - key: aspnet
+        label: ASP.NET Core
+        aliases: ["asp.net", "web api"]
+      - key: entity_framework
+        label: Entity Framework
+        aliases: ["ef", "ef core"]
+
+  - key: javascript
+    label: JavaScript
+    type: language
+    aliases: ["js", "ecmascript", "es6"]
+    children:
+      - key: typescript
+        label: TypeScript
+        aliases: ["ts"]
+      - key: node
+        label: Node.js
+        aliases: ["nodejs", "node.js"]
+        related: ["express", "nest"]
+      - key: express
+        label: Express.js
+      - key: react
+        label: React
+        aliases: ["react.js", "reactjs"]
+      - key: angular
+        label: Angular
+        aliases: ["angular2+", "@angular"]
+      - key: vue
+        label: Vue.js
+        aliases: ["nuxt"]
+
+  - key: python
+    label: Python
+    type: language
+    aliases: ["py"]
+    children:
+      - key: django
+        label: Django
+        aliases: ["django rest", "drf"]
+      - key: flask
+        label: Flask
+      - key: pandas
+        label: Pandas
+      - key: numpy
+        label: NumPy
+
+  - key: mobile
+    label: Mobile
+    type: platform
+    children:
+      - key: ios
+        label: iOS (Swift/Obj-C)
+        aliases: ["swift", "objective-c"]
+      - key: android
+        label: Android (Kotlin/Java)
+        aliases: ["kotlin"]
+      - key: flutter
+        label: Flutter
+        aliases: ["dart"]
+      - key: react_native
+        label: React Native
+
+  # --- Cloud (Azure focus + AWS/GCP) ---
+  - key: azure
+    label: Microsoft Azure
+    type: cloud
+    aliases: ["ms azure", "microsoft cloud"]
+    children:
+      - key: azure_functions
+        label: Azure Functions
+      - key: logic_apps
+        label: Azure Logic Apps
+      - key: service_bus
+        label: Azure Service Bus
+      - key: aks
+        label: Azure Kubernetes Service (AKS)
+      - key: azure_devops
+        label: Azure DevOps
+        aliases: ["ado", "azure pipelines", "azure repos"]
+      - key: databricks
+        label: Azure Databricks
+        aliases: ["adb"]
+        children:
+          - key: pyspark
+            label: PySpark
+          - key: delta_lake
+            label: Delta Lake
+          - key: mlflow
+            label: MLflow
+
+  - key: aws
+    label: Amazon Web Services
+    type: cloud
+    aliases: ["amazon cloud", "aws cloud"]
+    children:
+      - key: lambda
+        label: AWS Lambda
+      - key: api_gateway
+        label: API Gateway
+      - key: sqs
+        label: SQS
+      - key: sns
+        label: SNS
+      - key: eks
+        label: EKS
+
+  - key: gcp
+    label: Google Cloud Platform
+    type: cloud
+    children:
+      - key: gke
+        label: GKE
+      - key: dataflow
+        label: Dataflow
+      - key: bigquery
+        label: BigQuery
+      - key: pubsub
+        label: Pub/Sub
+
+  # --- Data & Integration ---
+  - key: sql
+    label: SQL
+    aliases: ["t-sql", "pl/sql", "postgresql", "mysql", "oracle sql"]
+  - key: etl
+    label: ETL / ELT
+    aliases: ["pipelines", "ingestion", "transformation"]
+    related: ["airflow", "dbt", "pyspark", "databricks"]
+  - key: api_design
+    label: API Design
+    aliases: ["openapi", "swagger"]
+  - key: oauth2_oidc
+    label: OAuth2 / OIDC
+    aliases: ["oauth", "oidc", "jwt"]
+
+  # --- DevOps & Containers ---
+  - key: docker
+    label: Docker
+    aliases: ["containers", "dockerfile", "compose"]
+  - key: kubernetes
+    label: Kubernetes
+    aliases: ["k8s", "kube"]
+    related: ["helm", "service mesh", "istio", "aks", "eks", "gke"]
+  - key: cicd
+    label: CI/CD
+    aliases: ["ci cd", "pipelines", "build and release"]
+    related: ["azure devops", "github actions", "gitlab ci"]
+
+  # --- BI / Analytics ---
+  - key: power_bi
+    label: Power BI
+    aliases: ["powerbi"]
+  - key: tableau
+    label: Tableau
+    aliases: ["tableau desktop", "tableau server"]
+
+  # --- Security ---
+  - key: siem
+    label: SIEM
+    aliases: ["security information event management", "splunk", "azure sentinel", "microsoft sentinel"]
+  - key: edr
+    label: EDR/XDR
+    aliases: ["defender for endpoint", "crowdstrike", "xdr"]
+  - key: vulnerability_mgmt
+    label: Vulnerability Management
+    aliases: ["qualys", "nessus", "va"]
+  - key: network_security
+    label: Network Security
+    aliases: ["firewalls", "ids/ips", "waf"]
+  - key: governance_risk_compliance
+    label: Governance, Risk & Compliance (GRC)
+    aliases: ["iso 27001", "nist", "cobit", "pdpa", "gdpr"]
+
+  # --- Methodologies & Sales ---
+  - key: meddicc
+    label: MEDDICC / MEDDPICC
+    aliases: ["meddic", "meddpicc", "med-picc"]
+  - key: sales_enterprise
+    label: Enterprise Sales
+    aliases: ["b2b saas", "solution selling", "account management"]
+
+# ---------------------------
+# Role-to-skill crosswalk (default core skills per role)
+# ---------------------------
+role_skill_map:
+  java_developer: [java, spring_boot, rest_api, microservices, sql, docker]
+  senior_backend_java: [java, spring_boot, microservices, rest_api, kubernetes, cicd]
+  fullstack_java: [java, spring_boot, react, rest_api, sql]
+  dotnet_developer: [dotnet, csharp, aspnet, entity_framework, sql, rest_api]
+  react_js_developer: [javascript, react, typescript, rest_api]
+  node_js_developer: [javascript, node, express, rest_api, docker]
+  flutter_developer: [flutter, api_design]
+  data_engineer: [sql, etl, pyspark, databricks, delta_lake, cloud]
+  data_scientist: [python, pandas, numpy, mlflow, power_bi]
+  database_admin: [sql, docker, kubernetes]
+  devops_engineer: [docker, kubernetes, cicd, azure_devops, terraform]
+  cloud_infra_engineer: [azure, aks, service_bus, logic_apps]
+  sre_engineer: [kubernetes, cicd, monitoring]
+  wintel_engineer: [windows_server, active_directory, powershell]
+  linux_admin: [linux, bash, docker]
+  storage_backup_engineer: [backup, storage, san, nas]
+  network_specialist: [network_security, routing_switching, firewalls]
+  soc_manager: [siem, edr, governance_risk_compliance]
+  security_analyst: [siem, edr, vulnerability_mgmt]
+  information_security_engineer: [network_security, edr, siem]
+  qa_engineer: [test_automation, selenium, api_testing]
+  product_manager: [roadmapping, stakeholder_mgmt, analytics]
+  project_manager: [project_planning, risk_mgmt, ms_project]
+  business_analyst: [requirements_gathering, process_modeling, sql]
+  sap_abap_developer: [sap_abap, rfc, idoc, odata]
+  sap_fiori_consultant: [sap_fiori, ui5, odata]
+  sap_ehs_devops: [sap_ehs, devops]
+  sap_mm_consultant: [sap_mm]
+  sap_fico_consultant: [sap_fico]
+  sap_co_consultant: [sap_co]
+  oracle_fusion_techno_func: [oracle_fusion, plsql, oic]
+  dynamics_crm_dev_ba: [dynamics_365, power_platform, azure]
+  business_development_manager: [sales_enterprise, meddicc]
+  sales_manager: [sales_enterprise, forecasting]
+  sales_director: [sales_enterprise, meddicc, leadership]
+  hr_admin: [ats_tools, onboarding]
+
+# Stubs for additional skills referenced above
+skills_extra:
+  - { key: terraform, label: Terraform }
+  - { key: monitoring, label: Monitoring/Observability, aliases: ["prometheus", "grafana", "datadog"] }
+  - { key: windows_server, label: Windows Server }
+  - { key: active_directory, label: Active Directory, aliases: ["ad", "aad"] }
+  - { key: powershell, label: PowerShell }
+  - { key: linux, label: Linux }
+  - { key: bash, label: Bash }
+  - { key: backup, label: Backup }
+  - { key: storage, label: Storage }
+  - { key: san, label: SAN }
+  - { key: nas, label: NAS }
+  - { key: routing_switching, label: Routing & Switching }
+  - { key: firewalls, label: Firewalls }
+  - { key: test_automation, label: Test Automation }
+  - { key: selenium, label: Selenium }
+  - { key: api_testing, label: API Testing }
+  - { key: roadmapping, label: Product Roadmapping }
+  - { key: stakeholder_mgmt, label: Stakeholder Management }
+  - { key: analytics, label: Product Analytics }
+  - { key: project_planning, label: Project Planning }
+  - { key: risk_mgmt, label: Risk Management }
+  - { key: ms_project, label: Microsoft Project }
+  - { key: requirements_gathering, label: Requirements Gathering }
+  - { key: process_modeling, label: Process Modeling, aliases: ["bpmn"] }
+  - { key: sap_abap, label: SAP ABAP }
+  - { key: rfc, label: SAP RFC }
+  - { key: idoc, label: SAP IDoc }
+  - { key: odata, label: OData }
+  - { key: sap_fiori, label: SAP Fiori }
+  - { key: ui5, label: SAPUI5 }
+  - { key: sap_ehs, label: SAP EHS }
+  - { key: sap_mm, label: SAP MM }
+  - { key: sap_fico, label: SAP FICO }
+  - { key: sap_co, label: SAP CO }
+  - { key: oracle_fusion, label: Oracle Fusion }
+  - { key: plsql, label: PL/SQL }
+  - { key: oic, label: Oracle Integration Cloud }
+  - { key: dynamics_365, label: Microsoft Dynamics 365 }
+  - { key: power_platform, label: Power Platform, aliases: ["power apps", "power automate"] }
+  - { key: ats_tools, label: ATS Tools, aliases: ["manatal", "greenhouse", "workday"] }
+  - { key: forecasting, label: Sales Forecasting }
+  - { key: leadership, label: Leadership }
+  - { key: cloud, label: Public Cloud (General) }
+
+notes:
+  - Keep roles and skills keys stable; extend aliases over time.
+  - When both parent and child skills match, prefer the most-specific child (e.g., spring_boot over spring).
+  - Ambiguous tokens (e.g., "spring") should require co-mentions (e.g., java) or embeddings ≥ min_similarity.
+  - Use this ontology with your v2 rubric pipeline: /normalize_terms will first map titles & skills here, then cluster semantically.

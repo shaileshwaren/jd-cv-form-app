@@ -1,0 +1,226 @@
+# ---------- KNOWLEDGE FILE ----------
+version: 2.3
+name: knowledge_rubric
+description: >
+  Role-aware, generic JD→CV evaluator rules. Supports Technical (default, ~90% of roles),
+  Sales/BD, and Corporate/Operations families. Keeps the same scoring engine (0–5 scale,
+  pass threshold 70, floor rule) while swapping compliance gates, seeds, and bucket ratios
+  per role family.
+
+# --- Auto-detect role family from the JD text ---
+role_detection:
+  technical_cues:
+    - "(?i)engineer|developer|devops|sre|ml|ai|data|cloud|kubernetes|docker|sql|python|java|.net|sap|oracle|linux|windows|network|security|sysadmin|qa|tester|frontend|backend|full[- ]stack|etl|snowflake|databricks|kafka"
+  sales_cues:
+    - "(?i)sales|account executive|ae|business development|bdm|bde|quota|pipeline|crm|territory|closing|hunter|farmer|renewal|expansion|forecast|meddpicc|bant"
+  corporate_cues:
+    - "(?i)hr|recruitment|finance|accounting|payroll|admin|coordinator|customer service|operations|pm|project manager|program manager|ba|business analyst"
+  tie_breaker: "technical"    # if mixed, assume Technical (fits your ~90% workload)
+
+# --- Global compliance gate (role-specific parameters supplied by role_profiles) ---
+compliance_gate:
+  enforce_hard_fail: true
+  checks:
+    # Work authorization is explicitly ignored
+    work_authorization:
+      enabled: false
+      cues: ["(?i)right to work","(?i)visa","(?i)sponsorship","(?i)work permit"]
+      pass_if_absent_in_jd: true
+
+    education:
+      mode: STRICT_FIELD
+      min_level: bachelor
+      allow_any_degree: false
+      allow_related_field: true
+      allow_equivalent_experience: false
+      masters_supersedes_bachelors_field: true
+      core_fields:
+        - computer science
+        - software engineering
+        - computer engineering
+        - information technology
+        - information systems
+        - data science
+        - data engineering
+        - computing
+      adjacent_fields:
+        - information security
+        - cybersecurity
+        - business information systems
+        - applied computing
+      adjacent_requires_cs_core_evidence: true
+      cs_core_evidence_keywords:
+        - algorithms
+        - data structures
+        - databases
+        - operating systems
+        - distributed systems
+        - software engineering
+        - data engineering
+
+    # Minimum years are derived from the JD (no hard-coded min)
+    years_experience:
+      derive_from_jd: true
+      cues:
+        - "(?i)(\\d+)[+ ]*years? of experience"
+        - "(?i)\\b(\\d+)[-–]?(\\d+)\\+? years\\b"   # ranges like 3–5 years
+      derive_strategy:
+        use_lower_bound_for_ranges: true
+        if_multiple_mentions_use_highest_min: true
+        if_absent_no_minimum: true
+
+    # Optional: passes if security/compliance appears in the JD
+    security_compliance:
+      cues: ["(?i)security","(?i)access control","(?i)compliance","(?i)gdpr","(?i)iso","(?i)soc2"]
+      pass_if_present_in_jd: true
+
+    language_requirements:
+      cues: ["(?i)english"]
+      min_level: professional
+
+# --- Role profiles: supply compliance defaults, seeds, and bucket ratios ---
+role_profiles:
+  technical:
+    compliance:
+      education:
+        mode: STRICT_FIELD
+        min_level: bachelor
+        allow_any_degree: false
+        allow_related_field: true
+        core_fields: ["computer science","software engineering","computer engineering","information technology","information systems","data science","data engineering","cybersecurity","computing","electronics"]
+        adjacent_fields: ["information security","business information systems","applied computing","electrical engineering"]
+        adjacent_requires_cs_core_evidence: true
+        cs_core_evidence_keywords: ["algorithms","data structures","databases","operating systems","distributed systems","software engineering","data engineering"]
+      years_experience:
+        derive_from_jd: true
+    default_bucket_ratio: { must_have: 90, nice_to_have: 10 }
+    term_seeds:
+      programming: ["python","java","c#",".net","scala","go","typescript","javascript","node.js","sql","pyspark","spark sql","bash","powershell"]
+      data_platforms: ["databricks","unity catalog","delta lake","kafka","airflow","dbt","snowflake","synapse","bigquery","redshift","hive","hudi","iceberg"]
+      cloud_iac_ci: ["azure","aws","gcp","terraform","cloudformation","github actions","gitlab ci","jenkins","azure devops","docker","kubernetes"]
+      storage_db: ["parquet","delta","orc","avro","postgres","mysql","mssql","mongodb","redis","cosmos","dynamo"]
+      security_governance: ["metadata","lineage","validation","monitoring","alerting","rbac","iam","encryption","secrets","siem","soar"]
+      ways_of_working: ["scrum","kanban","jira","confluence","documentation","stakeholder communication","estimation","on-call","itil"]
+
+  sales:
+    compliance:
+      education:
+        mode: LEVEL_ONLY
+        min_level: bachelor
+        allow_any_degree: true
+      years_experience:
+        derive_from_jd: true
+    default_bucket_ratio: { must_have: 80, nice_to_have: 20 }
+    term_seeds:
+      sales_core: ["quota","quota attainment","pipeline","prospecting","territory","crm","salesforce","hubspot","opportunity","forecast","negotiation","closing","demo","poc"]
+      motions: ["enterprise","mid-market","smb","hunter","farmer","land and expand","renewal","expansion","channel","partner"]
+      frameworks: ["meddpicc","bant","spin","value selling","solution selling"]
+      gtM_product: ["saas","cloud","ai","ml","data","security","devtools","fintech","public sector"]
+      collaboration: ["qbr","playbook","enablement","pricing","procurement","stakeholder","c-level","stakeholder mapping"]
+
+  corporate:
+    compliance:
+      education:
+        mode: FLEXIBLE_FIELD
+        min_level: bachelor
+        allow_any_degree: true
+      years_experience:
+        derive_from_jd: true
+    default_bucket_ratio: { must_have: 70, nice_to_have: 30 }
+    term_seeds:
+      hr_ops: ["recruitment","talent acquisition","payroll","compensation","benefits","onboarding","hris","sap successfactors","workday"]
+      finance_ops: ["financial reporting","accounts payable","accounts receivable","gl","consolidation","ifrs","sox","audit","fp&a","oracle","sap fico"]
+      pm_ba_ops: ["project management","program management","stakeholder","requirements","uats","pmo","ms project","m365","jira","confluence"]
+      support_ops: ["customer service","sla","ticketing","zendesk","service now","l1","l2","sop","shift","rotational"]
+
+# --- JD parsing & extraction (works across all roles) ---
+jd_parsing:
+  requirement_extraction:
+    must_have_cues: ["(?i)must have","(?i)required","(?i)mandatory","(?i)essential","(?i)you will","(?i)responsible for"]
+    nice_to_have_cues: ["(?i)preferred","(?i)advantage","(?i)nice to have","(?i)bonus","(?i)good to have","(?i)plus"]
+  term_extraction:
+    mode: dynamic_with_role_seeds
+    normalize:
+      casefold: true
+      strip_punctuation: true
+      singularize: true
+      dedupe: true
+    tokenization:
+      ngrams: [1,2,3]
+    fuzzy_matching:
+      enabled: true
+      max_edit_distance: 1
+    synonym_map_strategy:
+      expand_aliases: true
+      expand_hyponyms: true
+      collapse_variants: true
+
+# --- Weighting guidance (engine unchanged) ---
+weighting_methodology_guidance:
+  factors: ["impact","risk","trainability_difficulty","scarcity"]
+  combine_formula: "0.4*impact + 0.3*risk + 0.2*trainability_difficulty + 0.1*scarcity"
+  normalize_to_bucket_totals: true
+  tips:
+    - Use /boost for role-critical items (e.g., Databricks for Data Eng, Quota for Sales).
+    - Use /redistribute to reset to equal weights inside buckets.
+    - Keep small non-zero weights for nice-to-haves you truly value.
+
+# --- Defaults: dynamic; evaluator fills these from the JD ---
+defaults_for_this_JD:
+  compliance_only: []
+  must_have: []
+  nice_to_have: []
+
+# --- Scoring & gates (unchanged to preserve your reports) ---
+scoring:
+  scale:
+    "0": "Absent"
+    "1": "Mention only"
+    "2": "Basic use / exposure"
+    "3": "Solid recent"
+    "4": "Strong with impact"
+    "5": "Expert/owner with metrics"
+  overall_pass_threshold: 70
+  floor_rule:
+    enabled: true
+    rule: "any must-have < 2 => FAIL"
+
+# --- Reporting defaults (same header/table structure your team expects) ---
+reporting_defaults:
+    table_style_preferred: "Grid Table 2 Accent 1"
+    table_style_fallback: "Table Grid"
+    fallback_header_row_shading: { apply_on_fallback_only: true, color_hex: "D9EAF7" }
+  header_template:
+    - "👤 Candidate: {candidate_name}"
+    - "🎯 Role Applied: {role_applied}"
+    - "📊 Final Score: {final_score} / 100"
+  bucket_titles:
+    must_have: "Must-have (sum weight = {must_sum}%)"
+    nice_to_have: "Nice-to-have (sum weight = {nice_sum}%)"
+  show_compliance_summary: true
+
+
+# --- Risk analysis defaults (job hopping & gaps) ---
+gaps_risks:
+  job_hopping:
+    short_tenure_months: 12
+    window_years: 5
+    moderate_min_short_stints: 2
+    high_min_short_stints: 3
+    exclude_contract: true
+    internship_max_months: 6
+    # You said you do NOT do interns/trainees, so no exclusions:
+    title_exclusion_regex: ""
+  gaps:
+    min_gap_months: 3
+    moderate_gap_months: 6
+    high_gap_months: 12
+    ignore_edu_breaks_before_first_role: true
+    ignore_military_service: true
+  date_parsing:
+    accepted: ['MMM yyyy','MMMM yyyy','MM/yyyy','yyyy']
+    open_ended: ['present','current','now']
+  overall_risk_logic:
+    high_if_any_high: true
+    moderate_if_any_moderate_and_none_high: true
+

@@ -1,0 +1,85 @@
+# ============================
+#  RUBRIC PRESET TEMPLATE
+#  (Compatible with /generate_rubric and preset_rubric_yaml)
+# ============================
+
+rubric_version: "1.0"
+role_name: "MySQL Database Administrator (Linux)"   # Editable
+
+metadata:
+  created_from_jd: true               # true/false — indicates if this was derived via /generate_rubric
+  source_jd_hash: ""                  # Optional integrity hash (auto-added if needed)
+  notes: "Preset rubric for fast scoring mode."
+
+compliance:
+  education:
+    mode: STRICT_FIELD
+    min_level: bachelor
+    allow_related_field: true
+    allow_any_degree: false
+  years_experience:
+    minimum: 0                        # If JD had a minimum, reflect it here
+  work_authorization: ignored         # Always ignored per global policies
+
+must_have:
+  items:
+    - key: "mysql_linux_admin"
+      label: "MySQL database administration on Linux"
+      weight_pct: 20.0
+
+    - key: "perf_tuning"
+      label: "Performance tuning, optimization, troubleshooting"
+      weight_pct: 18.0
+
+    - key: "backup_restore"
+      label: "Backup and restore operations"
+      weight_pct: 15.0
+
+    - key: "linux_sys_admin"
+      label: "Basic Linux system administration"
+      weight_pct: 12.0
+
+    - key: "analysis_problem_solving"
+      label: "Analytical & problem-solving capability"
+      weight_pct: 10.0
+
+    - key: "communication"
+      label: "Effective communication"
+      weight_pct: 8.0
+
+    - key: "proactive_learning"
+      label: "Proactive mindset and willingness to learn"
+      weight_pct: 7.0
+
+nice_to_have:
+  items:
+    - key: "automation_ansible"
+      label: "Automation or Ansible / configuration management"
+      weight_pct: 4.0
+
+    - key: "ha_distributed"
+      label: "High-availability / distributed database mechanisms"
+      weight_pct: 3.0
+
+    - key: "capacity_planning"
+      label: "Capacity estimation & monitoring"
+      weight_pct: 2.0
+
+    - key: "physical_architecture"
+      label: "Physical DB architecture & schema design"
+      weight_pct: 1.0
+
+scoring_rules:
+  scale_reference: default             # Uses global scale (0–5)
+  floor_rule:                          # Must-have <2 ⇒ FAIL
+    enabled: true
+    condition: "any must-have < 2"
+
+weights_summary:
+  must_have_total: 90.0
+  nice_to_have_total: 10.0
+  total: 100.0
+
+validation:
+  enforce_weight_sums: true
+  require_citations_for_scores_gt_zero: true
