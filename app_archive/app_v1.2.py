@@ -1,4 +1,4 @@
-# version 1.3
+# version 1.2
 
 
 import os
@@ -626,30 +626,18 @@ def report_data_to_html(report_data: dict) -> str:
         for r in compliance
     )
 
-    def dot_for_score(score: int) -> str:
-        # Traffic light mapping: green 4–5, yellow 2-3, red 0–1
-        if score >= 4:
-            cls = "green"
-        elif score >= 2:
-            cls = "yellow"
-        else:
-            cls = "red"
-        return f"<span class='dot {cls}'></span>"
-
     def req_rows(reqs):
         out = []
         for r in (reqs or []):
             weight = float(r.get("weight_pct", 0) or 0)
             contrib = float(r.get("weighted_contribution_pct", 0) or 0)
             score = int(r.get("score_0_5", 0) or 0)
-            dot = dot_for_score(score)
-
             out.append(
                 "<tr>"
                 f"<td class='mono'>{esc(r.get('idx',''))}</td>"
                 f"<td>{esc(r.get('label',''))}</td>"
                 f"<td class='center'>{esc(f'{weight:.2f}%')}</td>"
-                f"<td class='center'>{dot}{esc(score)}</td>"
+                f"<td class='center'>{esc(score)}</td>"
                 f"<td class='center'>{esc(f'{contrib:.2f}%')}</td>"
                 f"<td class='evidence'>{esc(r.get('evidence',''))}</td>"
                 "</tr>"
@@ -715,21 +703,6 @@ def report_data_to_html(report_data: dict) -> str:
     .badge.fail {{ background: rgba(239,68,68,.14); color: #ffd0d0; border-color: rgba(239,68,68,.35); }}
     .badge.review {{ background: rgba(245,158,11,.16); color: #ffe7b5; border-color: rgba(245,158,11,.40); }}
     .badge.neutral {{ background: rgba(100,116,139,.16); color: #d7deea; border-color: rgba(100,116,139,.40); }}
-
-    /* Traffic-light score dots */
-    .dot {{
-      display: inline-block;
-      width: 12px;
-      height: 12px;
-      border-radius: 999px;
-      margin-right: 8px;
-      vertical-align: -1px;
-      border: 1px solid rgba(255,255,255,.22);
-      box-shadow: 0 0 0 3px rgba(255,255,255,.04) inset;
-    }}
-    .dot.green  {{ background: rgba(34,197,94,.90); }}
-    .dot.yellow {{ background: rgba(245,158,11,.95); }}
-    .dot.red    {{ background: rgba(239,68,68,.90); }}
 
     .grid {{ display: grid; grid-template-columns: 1fr; gap: 14px; margin-top: 14px; }}
     .card {{
@@ -899,8 +872,8 @@ init_state()
 # ----------------------------
 # UI
 # ----------------------------
-st.set_page_config(page_title="JD→CV Scorer", layout="wide")
-st.title("JD→CV Scorer (v1.3)")
+st.set_page_config(page_title="JD→CV Scorer (Form)", layout="wide")
+st.title("JD→CV Scorer — Form UI (No Chat)")
 
 tab1, tab2 = st.tabs(["1) Generate Rubric", "2) Evaluate CVs"])
 
